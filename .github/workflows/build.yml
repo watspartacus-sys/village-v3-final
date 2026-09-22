@@ -10,10 +10,22 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       - uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: 8.5
+      - name: Check files
+        run: |
+          pwd
+          ls -la
+          ls -la app/
+          cat settings.gradle
+          cat build.gradle
+          cat app/build.gradle
+      - name: List projects
+        run: gradle projects
       - name: Build
         run: gradle :app:assembleDebug
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Village-V3-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/*.apk

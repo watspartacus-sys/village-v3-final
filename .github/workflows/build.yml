@@ -1,4 +1,4 @@
-name: Build V4 APK
+name: Build V5 APK
 on: [push]
 jobs:
   build:
@@ -9,7 +9,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Create V4
+      - name: Create V5
         run: |
           rm -rf app build.gradle settings.gradle gradle.properties
           mkdir -p app/src/main/java/com/zeu/v3
@@ -34,7 +34,7 @@ jobs:
             defaultConfig {
               applicationId "com.zeu.v3"
               minSdk 24; targetSdk 34
-              versionCode 4; versionName "4.0"
+              versionCode 5; versionName "5.0"
             }
             buildTypes { release { minifyEnabled false } }
             compileOptions {
@@ -71,11 +71,11 @@ jobs:
           data class Member(var name: String, var saved: Double=0.0, var fee: Double=0.0, var loan: Double=0.0)
           data class Record(val date: String, val member: String, val type: String, val amount: Double)
           class MainActivity : ComponentActivity() {
-           override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); setContent { VillageV4() } }
+           override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); setContent { VillageV5() } }
           }
           @OptIn(ExperimentalMaterial3Api::class)
           @Composable
-          fun VillageV4(){
+          fun VillageV5(){
            var members by remember { mutableStateOf(listOf(Member("Amina"), Member("James"), Member("Sarah"))) }
            var records by remember { mutableStateOf(listOf<Record>()) }
            var newName by remember { mutableStateOf("") }
@@ -83,13 +83,19 @@ jobs:
            var isStarted by remember { mutableStateOf(false) }
            var isClosed by remember { mutableStateOf(false) }
            var tab by remember { mutableStateOf(0) }
+           var showClearDialog by remember { mutableStateOf(false) }
            val today = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date())
-           var box by remember { mutableStateOf(1250000.0) }
-           var social by remember { mutableStateOf(320000.0) }
+           var box by remember { mutableStateOf(0.0) }
+           var social by remember { mutableStateOf(0.0) }
            val FIXED = 5000.0
            val LOAN_AMT = 150000.0
            val INTEREST = 0.10
-           Scaffold(topBar={TopAppBar(title={Text("Village V4 - $today")})}){pad->
+           if(showClearDialog){
+             AlertDialog(onDismissRequest={showClearDialog=false}, title={Text("Clear ALL Data?")}, text={Text("This will delete Box, Social Fund, Members and History! Are you sure?")},
+             confirmButton={Button(onClick={ members=emptyList(); records=emptyList(); box=0.0; social=0.0; isStarted=false; isClosed=false; showClearDialog=false }){Text("YES CLEAR")}},
+             dismissButton={OutlinedButton(onClick={showClearDialog=false}){Text("Cancel")}})
+           }
+           Scaffold(topBar={TopAppBar(title={Text("Village V5 - $today")})}){pad->
             Column(Modifier.padding(pad).padding(10.dp)){
              Card(colors=CardDefaults.cardColors(containerColor=if(isClosed) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer)){
               Column(Modifier.padding(10.dp)){
@@ -98,14 +104,14 @@ jobs:
                 if(!isStarted){ Button(onClick={isStarted=true; isClosed=false}){Text("START")} }
                 else if(!isClosed){ Button(onClick={isClosed=true}, colors=ButtonDefaults.buttonColors(containerColor=MaterialTheme.colorScheme.error)){Text("CLOSE")} }
                 else { Button(onClick={isStarted=false; isClosed=false}){Text("New Day")} }
-                OutlinedButton(onClick={ members=listOf(Member("Amina"), Member("James"), Member("Sarah")); records=listOf(); box=1250000.0; social=320000.0; isStarted=false; isClosed=false }){Text("Clear Data")}
+                OutlinedButton(onClick={showClearDialog=true}){Text("Clear Data")}
                }
               }
              }
              Spacer(Modifier.height(6.dp))
              Card(Modifier.fillMaxWidth()){ Column(Modifier.padding(8.dp)){
-               Text("Box: ${box.toInt()} UGX | Social Fund: ${social.toInt()} UGX", style=MaterialTheme.typography.titleMedium)
-               Text("Total Members: ${members.size} | Total Saved: ${members.sumOf{it.saved}.toInt()} UGX", style=MaterialTheme.typography.bodySmall)
+               Text("Box: ${box.toInt()} UGX | Social: ${social.toInt()} UGX", style=MaterialTheme.typography.titleMedium)
+               Text("Members: ${members.size} | Total Saved: ${members.sumOf{it.saved}.toInt()} UGX | Fees: ${records.filter{it.type.contains("Fee")}.sumOf{it.amount}.toInt()} UGX", style=MaterialTheme.typography.bodySmall)
              }}
              TabRow(selectedTabIndex=tab){
               Tab(selected=tab==0, onClick={tab=0}, text={Text("Members")})
@@ -128,7 +134,7 @@ jobs:
                      OutlinedTextField(value=feeAmount, onValueChange={feeAmount=it}, modifier=Modifier.width(70.dp), label={Text("Fee")})
                      Button(onClick={ val f=feeAmount.toDoubleOrNull()?:1000.0; members=members.map{if(it.name==m.name) it.copy(fee=it.fee+f) else it}; social+=f; records=records+Record(today,m.name,"Late/Fee",f) }){Text("Late", style=MaterialTheme.typography.labelSmall)}
                      Button(onClick={ members=members.map{if(it.name==m.name) it.copy(loan=LOAN_AMT) else it}; box-=LOAN_AMT; records=records+Record(today,m.name,"Loan 150k",LOAN_AMT) }){Text("150k", style=MaterialTheme.typography.labelSmall)}
-                     Button(onClick={ val ret=LOAN_AMT+LOAN_AMT*INTEREST; members=members.map{if(it.name==m.name) it.copy(loan=0.0) else it}; box+=ret; records=records+Record(today,m.name,"Return",ret) }){Text("Ret", style=MaterialTheme.typography.labelSmall)}
+                     Button(onClick={ val ret=LOAN_AMT+LOAN_AMT*INTEREST; members=members.map{if(it.name==m.name) it.copy(loan=0.0) else it}; box+=ret; records=records+Record(today,m.name,"Return 165k",ret) }){Text("Ret", style=MaterialTheme.typography.labelSmall)}
                     }
                    } else { Text("Start meeting to transact", style=MaterialTheme.typography.labelSmall) }
                   }
@@ -142,14 +148,14 @@ jobs:
                     Column(Modifier.padding(12.dp)){
                       Text("SOCIAL FUND TOTAL", style=MaterialTheme.typography.labelMedium)
                       Text("${social.toInt()} UGX", style=MaterialTheme.typography.headlineMedium)
-                      Text("All Late + Fees go here", style=MaterialTheme.typography.bodySmall)
+                      Text("All Late + Fees go here. This is separate from Box!", style=MaterialTheme.typography.bodySmall)
                     }
                   }
                   Spacer(Modifier.height(8.dp))
                   Text("Social Fund Records:", style=MaterialTheme.typography.titleSmall)
                 }
-                val socialRecords = records.filter{ it.type=="Late/Fee" }
-                if(socialRecords.isEmpty()){ item{ Text("No fees yet. When you charge Late fee, it shows here!", Modifier.padding(8.dp)) } }
+                val socialRecords = records.filter{ it.type.contains("Fee") }
+                if(socialRecords.isEmpty()){ item{ Text("No fees yet. Charge Late fee and it will appear here!", Modifier.padding(8.dp)) } }
                 items(socialRecords.reversed()){ r->
                   Card(Modifier.fillMaxWidth().padding(vertical=2.dp)){ Column(Modifier.padding(8.dp)){
                     Text("${r.date} - ${r.member} paid ${r.amount.toInt()} UGX", style=MaterialTheme.typography.bodyMedium)
@@ -161,7 +167,7 @@ jobs:
                LazyColumn(Modifier.weight(1f).padding(top=6.dp)){
                 item{ Text("History by Date - ${today}", style=MaterialTheme.typography.titleMedium) }
                 items(records.reversed()){ r-> Text("${r.date} | ${r.member} | ${r.type} | ${r.amount.toInt()} UGX", style=MaterialTheme.typography.bodySmall, modifier=Modifier.padding(vertical=2.dp)) }
-                if(records.isEmpty()){ item{ Text("No records yet", Modifier.padding(8.dp)) } }
+                if(records.isEmpty()){ item{ Text("No records yet - Start meeting and pay!", Modifier.padding(8.dp)) } }
                }
              }
             }
@@ -171,7 +177,7 @@ jobs:
           cat > app/src/main/AndroidManifest.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-           <application android:label="Village V4" android:theme="@android:style/Theme.Material.Light">
+           <application android:label="Village V5" android:theme="@android:style/Theme.Material.Light">
             <activity android:name=".MainActivity" android:exported="true">
              <intent-filter>
               <action android:name="android.intent.action.MAIN"/>
@@ -195,5 +201,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Village-V4-APK
+          name: Village-V5-APK
           path: app/build/outputs/apk/debug/app-debug.apk

@@ -13,12 +13,6 @@ jobs:
         run: |
           rm -rf app build.gradle settings.gradle gradle.properties
           mkdir -p app/src/main/java/com/zeu/v3
-          echo "android.useAndroidX=true" > gradle.properties
-          echo "android.nonTransitiveRResources=true" >> gradle.properties
-          echo "org.gradle.jvmargs=-Xmx2g" >> gradle.properties
-          echo "android.useAndroidX=true" > app/gradle.properties
-          cat gradle.properties
-          echo "---settings---"
           echo "include ':app'" > settings.gradle
           cat > build.gradle <<'EOF'
           buildscript {
@@ -171,14 +165,19 @@ jobs:
            </application>
           </manifest>
           EOF
-          ls -la
-          cat gradle.properties
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v3
         with:
           gradle-version: 8.5
       - name: Build APK
-        run: gradle :app:assembleDebug -Pandroid.useAndroidX=true
+        run: |
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "android.useAndroidX=true" > app/gradle.properties
+          mkdir -p ~/.gradle
+          echo "android.useAndroidX=true" > ~/.gradle/gradle.properties
+          echo "android.useAndroidX=true"
+          cat gradle.properties
+          gradle :app:assembleDebug
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:

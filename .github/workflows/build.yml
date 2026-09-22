@@ -134,4 +134,68 @@ jobs:
                          Spacer(Modifier.height(8.dp))
                          Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
                            Button(onClick={ curDate=nextDate; nextDate=addDays(curDate,7); weekNum++ }, colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF1565C0))){ Text("CLOSE -> $nextDate", fontSize=11.sp) }
-                           OutlinedButton(onClick={ isLocked=true }){ Text("Lock App")
+                           OutlinedButton(onClick={ isLocked=true }){ Text("Lock App") }
+                         }
+                       }
+                     }
+                     Spacer(Modifier.height(10.dp))
+                   }
+                   item{
+                     Card(Modifier.fillMaxWidth(), colors=CardDefaults.cardColors(containerColor=Color(0xFFFFEBEE)), shape=RoundedCornerShape(12.dp)){ Column(Modifier.padding(10.dp)){ Text("Loan Deadline Warning", fontWeight=FontWeight.Bold, fontSize=12.sp); Text("Next Saving: $nextDate • Box: VSH ${box.toInt()}", fontSize=11.sp) } }
+                     Spacer(Modifier.height(10.dp))
+                   }
+                   item{
+                     Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(16.dp)){
+                       Column(Modifier.padding(12.dp)){
+                         Text("Members (${members.size})", fontWeight=FontWeight.Bold)
+                         members.forEach{ m->
+                           Row(Modifier.fillMaxWidth().padding(vertical=6.dp), verticalAlignment=Alignment.CenterVertically){
+                             Box(Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFFFE082)), contentAlignment=Alignment.Center){ Text(m.initials, fontSize=12.sp, fontWeight=FontWeight.Bold) }
+                             Spacer(Modifier.width(8.dp))
+                             Column(Modifier.weight(1f)){ Text(m.name, fontWeight=FontWeight.Bold, fontSize=13.sp); Text("Paid ${m.saved.toInt()} • $curDate", fontSize=10.sp, color=Color.Gray) }
+                             Text(m.status, color=if(m.status=="Paid") Green else Color.Red, fontSize=11.sp)
+                           }
+                         }
+                       }
+                     }
+                     Spacer(Modifier.height(10.dp))
+                   }
+                   item{
+                     Card(Modifier.fillMaxWidth(), colors=CardDefaults.cardColors(containerColor=Color(0xFFFFF8E1)), shape=RoundedCornerShape(16.dp)){
+                       Column(Modifier.padding(16.dp), horizontalAlignment=Alignment.CenterHorizontally){
+                         Text("Group Fund Total", fontSize=12.sp); Text("VSH ${box.toInt()}", fontWeight=FontWeight.Bold, fontSize=22.sp); Text("Week $weekNum: $curDate -> Next: $nextDate", fontSize=11.sp, color=Green)
+                       }
+                     }
+                   }
+                 }
+               }
+             }
+           }
+          }
+          EOF
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+           <application android:label="Zeu V13 Lock" android:theme="@android:style/Theme.Material.Light">
+            <activity android:name=".MainActivity" android:exported="true">
+             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+            </activity>
+           </application>
+          </manifest>
+          EOF
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: 8.5
+      - name: Build APK
+        run: |
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "android.useAndroidX=true" > app/gradle.properties
+          mkdir -p ~/.gradle
+          echo "android.useAndroidX=true" > ~/.gradle/gradle.properties
+          gradle :app:assembleDebug --stacktrace
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zeu-V13-Fixed-Lock-APK
+          path: app/build/outputs/apk/debug/app-debug.apk

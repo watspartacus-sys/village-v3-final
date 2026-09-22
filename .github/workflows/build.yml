@@ -1,4 +1,4 @@
-name: Build V13.4 Personal Details
+name: Build V13.5 Fixed Personal
 on: [push]
 jobs:
   build:
@@ -9,7 +9,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Create V13.4
+      - name: Create V13.5
         run: |
           rm -rf app build.gradle settings.gradle gradle.properties
           mkdir -p app/src/main/java/com/zeu/v3
@@ -34,7 +34,7 @@ jobs:
             defaultConfig {
               applicationId "com.zeu.v3"
               minSdk 24; targetSdk 34
-              versionCode 17; versionName "13.4-personal"
+              versionCode 18; versionName "13.5-fixed"
             }
             buildTypes { release { minifyEnabled false } }
             compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
@@ -61,7 +61,6 @@ jobs:
           import androidx.compose.foundation.clickable
           import androidx.compose.foundation.layout.*
           import androidx.compose.foundation.lazy.LazyColumn
-          import androidx.compose.foundation.lazy.items
           import androidx.compose.foundation.shape.CircleShape
           import androidx.compose.foundation.shape.RoundedCornerShape
           import androidx.compose.material3.*
@@ -76,7 +75,7 @@ jobs:
           import java.text.SimpleDateFormat
           import java.util.*
           data class Member(val id: Int, val name: String, val initials: String, var saved: Double, var status: String)
-          data class Record(val date: String, val week: Int, val memberId: Int, val memberName: String, val amount: Double, val type: String="Saving")
+          data class Record(val date: String, val week: Int, val memberId: Int, val amount: Double)
           class MainActivity : ComponentActivity() {
            override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); setContent { ZeuApp() } }
           }
@@ -92,180 +91,53 @@ jobs:
            var nextDate by remember { mutableStateOf("29-08-2026") }
            var weekNum by remember { mutableStateOf(1) }
            var box by remember { mutableStateOf(84500.0) }
-           var records by remember { mutableStateOf(listOf<Record>(Record("22-08-2026",1,1,"Amina K.",1000.0), Record("22-08-2026",1,2,"Joseph M.",1000.0), Record("22-08-2026",1,4,"Ben T.",1000.0))) }
+           var records by remember { mutableStateOf(listOf(Record("22-08-2026",1,1,1000.0), Record("22-08-2026",1,2,1000.0), Record("22-08-2026",1,4,1000.0))) }
            var members by remember { mutableStateOf(listOf(Member(1,"Amina K.","AK",1000.0,"Paid"), Member(2,"Joseph M.","JM",1000.0,"Paid"), Member(3,"Grace W.","GW",0.0,"Due"), Member(4,"Ben T.","BT",1000.0,"Paid"))) }
            var selectedMember by remember { mutableStateOf<Member?>(null) }
            var showAdd by remember { mutableStateOf(false) }
            var newName by remember { mutableStateOf("") }
            val Green = Color(0xFF2E7D32)
-           fun getInitials(name: String): String { return try{ val p=name.trim().split(" ").filter{it.isNotEmpty()}; if(p.size>=2) "${p[0][0]}${p[1][0]}".uppercase() else p[0].take(2).uppercase() } catch(e:Exception){ "?" } }
+           fun getInitials(n: String): String { return try{ val p=n.trim().split(" ").filter{it.isNotEmpty()}; if(p.size>=2) "${p[0][0]}${p[1][0]}".uppercase() else p[0].take(2).uppercase() } catch(e:Exception){ "?" } }
            fun addDays(d: String, days: Int): String { return try { val sdf=SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()); val c=Calendar.getInstance(); c.time=sdf.parse(d)!!; c.add(Calendar.DAY_OF_YEAR, days); sdf.format(c.time) } catch(e:Exception){ d } }
            if(isLocked){
              Box(Modifier.fillMaxSize().background(Green), contentAlignment=Alignment.Center){
                Card(Modifier.padding(20.dp).fillMaxWidth(), shape=RoundedCornerShape(24.dp)){
                  Column(Modifier.padding(24.dp), horizontalAlignment=Alignment.CenterHorizontally){
-                   Text("🔒", fontSize=48.sp); Text(if(isSetting) "Set 4-digit PIN" else "Enter PIN", fontWeight=FontWeight.Bold, fontSize=20.sp)
-                   Text("Zeu Savings • Week $weekNum: $curDate", fontSize=11.sp, color=Color.Gray)
-                   Spacer(Modifier.height(12.dp))
-                   OutlinedTextField(value=inputPin, onValueChange={ if(it.length<=4) inputPin=it.filter{ch->ch.isDigit()} }, label={Text("PIN")}, modifier=Modifier.fillMaxWidth())
-                   if(error!="") Text(error, color=Color.Red, fontSize=12.sp)
+                   Text("🔒", fontSize=48.sp); Text(if(isSetting) "Set PIN" else "Enter PIN", fontWeight=FontWeight.Bold, fontSize=20.sp); Text("Week $weekNum: $curDate", fontSize=11.sp)
                    Spacer(Modifier.height(10.dp))
-                   Button(onClick={ if(isSetting){ if(inputPin.length==4){ appPin=inputPin; isSetting=false; isLocked=false; inputPin="" } else error="4 digits" } else { if(inputPin==appPin){ isLocked=false; inputPin="" } else error="Wrong PIN" } }, modifier=Modifier.fillMaxWidth(), colors=ButtonDefaults.buttonColors(containerColor=Green)){ Text(if(isSetting) "Set PIN & Open" else "Unlock") }
+                   OutlinedTextField(value=inputPin, onValueChange={ if(it.length<=4) inputPin=it.filter{ch->ch.isDigit()} }, label={Text("4-digit PIN")}, modifier=Modifier.fillMaxWidth())
+                   if(error!="") Text(error, color=Color.Red, fontSize=11.sp)
+                   Spacer(Modifier.height(8.dp))
+                   Button(onClick={ if(isSetting){ if(inputPin.length==4){ appPin=inputPin; isSetting=false; isLocked=false; inputPin="" } else error="Need 4 digits" } else { if(inputPin==appPin){ isLocked=false; inputPin="" } else error="Wrong PIN" } }, modifier=Modifier.fillMaxWidth(), colors=ButtonDefaults.buttonColors(containerColor=Green)){ Text(if(isSetting) "Set & Open" else "Unlock") }
                  }
                }
              }
            } else if(selectedMember!=null){
-             // PERSONAL SAVING DETAILS - V13 ORIGINAL STYLE
              val m = selectedMember!!
              val personal = records.filter{ it.memberId==m.id }
              val total = personal.sumOf{ it.amount }
-             Scaffold(topBar={ TopAppBar(title={ Column{ Text("#${m.id} ${m.name}", fontWeight=FontWeight.Bold); Text("Week $weekNum: $curDate → Next: $nextDate", fontSize=11.sp) } }, navigationIcon={ TextButton(onClick={ selectedMember=null }){ Text("← Back") } }) }){ pad->
-               LazyColumn(Modifier.padding(pad).fillMaxSize().background(Color(0xFFF5F5F5)).padding(12.dp)){
-                 item{
-                   Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(20.dp), colors=CardDefaults.cardColors(containerColor=Green)){
-                     Row(Modifier.padding(20.dp), verticalAlignment=Alignment.CenterVertically){
-                       Box(Modifier.size(60.dp).clip(CircleShape).background(Color.White), contentAlignment=Alignment.Center){ Text(m.initials, fontSize=20.sp, fontWeight=FontWeight.Bold, color=Green) }
-                       Spacer(Modifier.width(16.dp))
-                       Column{ Text(m.name, color=Color.White, fontWeight=FontWeight.Bold, fontSize=20.sp); Text("Initials: ${m.initials} • ID: #${m.id}", color=Color.White, fontSize=12.sp); Text("Member since: $curDate", color=Color.White, fontSize=11.sp) }
-                     }
+             Column(Modifier.fillMaxSize().background(Color(0xFFF5F5F5))){
+               Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(bottomStart=20.dp, bottomEnd=20.dp), colors=CardDefaults.cardColors(containerColor=Green)){
+                 Column(Modifier.padding(16.dp)){
+                   Row(verticalAlignment=Alignment.CenterVertically){
+                     Box(Modifier.size(40.dp).clip(CircleShape).background(Color.White).clickable{ selectedMember=null }, contentAlignment=Alignment.Center){ Text("←") }
+                     Spacer(Modifier.width(12.dp))
+                     Text("Personal Details - #${m.id} ${m.name}", color=Color.White, fontWeight=FontWeight.Bold, fontSize=16.sp)
                    }
                    Spacer(Modifier.height(12.dp))
+                   Row(verticalAlignment=Alignment.CenterVertically){
+                     Box(Modifier.size(60.dp).clip(CircleShape).background(Color.White), contentAlignment=Alignment.Center){ Text(m.initials, fontSize=20.sp, fontWeight=FontWeight.Bold, color=Green) }
+                     Spacer(Modifier.width(12.dp))
+                     Column{ Text(m.name, color=Color.White, fontWeight=FontWeight.Bold, fontSize=18.sp); Text("ID #${m.id} • Joined $curDate • Next $nextDate", color=Color.White, fontSize=11.sp) }
+                   }
                  }
+               }
+               LazyColumn(Modifier.padding(12.dp)){
                  item{
                    Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                     Card(Modifier.weight(1f), shape=RoundedCornerShape(16.dp), colors=CardDefaults.cardColors(containerColor=Color.White)){ Column(Modifier.padding(16.dp), horizontalAlignment=Alignment.CenterHorizontally){ Text("Personal Saved", fontSize=11.sp, color=Color.Gray); Text("VSH ${total.toInt()}", fontWeight=FontWeight.Bold, fontSize=18.sp, color=Green); Text(m.status, color=if(m.status=="Paid") Green else Color.Red, fontSize=12.sp, fontWeight=FontWeight.Bold) } }
-                     Card(Modifier.weight(1f), shape=RoundedCornerShape(16.dp), colors=CardDefaults.cardColors(containerColor=Color.White)){ Column(Modifier.padding(16.dp), horizontalAlignment=Alignment.CenterHorizontally){ Text("Total Transactions", fontSize=11.sp, color=Color.Gray); Text("${personal.size}", fontWeight=FontWeight.Bold, fontSize=18.sp); Text("Week $weekNum", fontSize=12.sp, color=Green) } }
+                     Card(Modifier.weight(1f), shape=RoundedCornerShape(12.dp)){ Column(Modifier.padding(14.dp), horizontalAlignment=Alignment.CenterHorizontally){ Text("Personal Total", fontSize=11.sp, color=Color.Gray); Text("VSH ${total.toInt()}", fontWeight=FontWeight.Bold, fontSize=18.sp, color=Green); Text(m.status, color=if(m.status=="Paid") Green else Color.Red, fontWeight=FontWeight.Bold, fontSize=12.sp) } }
+                     Card(Modifier.weight(1f), shape=RoundedCornerShape(12.dp)){ Column(Modifier.padding(14.dp), horizontalAlignment=Alignment.CenterHorizontally){ Text("Transactions", fontSize=11.sp, color=Color.Gray); Text("${personal.size}", fontWeight=FontWeight.Bold, fontSize=18.sp); Text("Week $weekNum: $curDate", fontSize=10.sp, color=Green) } }
                    }
-                   Spacer(Modifier.height(12.dp))
+                   Spacer(Modifier.height(10.dp))
                  }
                  item{
-                   Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(16.dp)){
-                     Column(Modifier.padding(16.dp)){
-                       Text("💰 Add Saving for ${m.name}", fontWeight=FontWeight.Bold, fontSize=16.sp)
-                       Text("Current Date: $curDate • Next: $nextDate", fontSize=11.sp, color=Color.Gray)
-                       Spacer(Modifier.height(8.dp))
-                       OutlinedTextField(value=amount, onValueChange={amount=it}, label={Text("Amount VSH")}, modifier=Modifier.fillMaxWidth())
-                       Row(Modifier.fillMaxWidth().padding(top=8.dp), horizontalArrangement=Arrangement.spacedBy(6.dp)){ listOf("500","1000","5000","10000").forEach{ v-> OutlinedButton(onClick={amount=v}){ Text("+$v", fontSize=11.sp) } } }
-                       Spacer(Modifier.height(8.dp))
-                       Button(onClick={ val a=amount.toDoubleOrNull()?:0.0; if(a>0){ records=records+Record(curDate, weekNum, m.id, m.name, a); members=members.map{ if(it.id==m.id) it.copy(saved=it.saved+a, status="Paid") else it }; selectedMember=members.find{it.id==m.id} } }, modifier=Modifier.fillMaxWidth(), colors=ButtonDefaults.buttonColors(containerColor=Green)){ Text("Save ${amount} for ${m.name} - $curDate") }
-                     }
-                   }
-                   Spacer(Modifier.height(12.dp))
-                 }
-                 item{
-                   Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(16.dp)){
-                     Column(Modifier.padding(16.dp)){
-                       Text("📅 Personal Saving History - All Dates", fontWeight=FontWeight.Bold, fontSize=16.sp)
-                       Text("${m.name} joined $curDate • ${personal.size} records", fontSize=11.sp, color=Color.Gray)
-                       Spacer(Modifier.height(10.dp))
-                       if(personal.isEmpty()){
-                         Card(colors=CardDefaults.cardColors(containerColor=Color(0xFFFFEBEE)), shape=RoundedCornerShape(8.dp)){ Column(Modifier.padding(10.dp).fillMaxWidth()){ Text("No savings yet", fontWeight=FontWeight.Bold, color=Color.Red); Text("📅 $curDate - Status: ${m.status} - 0 VSH", fontSize=12.sp) } }
-                       } else {
-                         personal.reversed().forEach{ r->
-                           Card(Modifier.fillMaxWidth().padding(vertical=4.dp), colors=CardDefaults.cardColors(containerColor=Color(0xFFE8F5E9)), shape=RoundedCornerShape(8.dp)){
-                             Row(Modifier.padding(10.dp).fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween){
-                               Column{ Text("📅 ${r.date}", fontWeight=FontWeight.Bold, fontSize=13.sp); Text("Week ${r.week}: ${r.type}", fontSize=11.sp, color=Color.Gray) }
-                               Text("+${r.amount.toInt()} VSH", fontWeight=FontWeight.Bold, color=Green)
-                             }
-                           }
-                         }
-                       }
-                       Spacer(Modifier.height(8.dp))
-                       Card(colors=CardDefaults.cardColors(containerColor=Color(0xFFFFF8E1)), shape=RoundedCornerShape(8.dp)){ Column(Modifier.padding(10.dp).fillMaxWidth()){ Text("Summary for #${m.id} ${m.name}", fontWeight=FontWeight.Bold, fontSize=12.sp); Text("First Date: $curDate • Last: ${personal.lastOrNull()?.date?: curDate} • Next Expected: $nextDate", fontSize=11.sp); Text("Box Contribution: VSH ${box.toInt()}", fontSize=11.sp, color=Green) } }
-                     }
-                   }
-                 }
-               }
-             }
-           } else {
-             if(showAdd){
-               AlertDialog(onDismissRequest={showAdd=false}, title={Text("Add New Member")}, text={
-                 Column{
-                   Text("Week $weekNum: $curDate → Next $nextDate", fontSize=11.sp, color=Color.Gray)
-                   OutlinedTextField(value=newName, onValueChange={newName=it}, label={Text("Full Name e.g Sarah N.")}, modifier=Modifier.fillMaxWidth().padding(top=8.dp))
-                   if(newName.isNotEmpty()) Text("Initials: ${getInitials(newName)} • Will start $curDate", color=Green, fontSize=12.sp, modifier=Modifier.padding(top=6.dp))
-                 }
-               }, confirmButton={ Button(onClick={ if(newName.trim().length>=2){ val id=members.size+1; members=members+Member(id, newName.trim(), getInitials(newName), 0.0, "Due"); newName=""; showAdd=false } }, colors=ButtonDefaults.buttonColors(containerColor=Green)){ Text("Add #${members.size+1}") } }, dismissButton={ TextButton(onClick={showAdd=false}){ Text("Cancel") } })
-             }
-             Scaffold{ pad->
-               Column(Modifier.padding(pad).background(Color(0xFFF5F5F5)).fillMaxSize()){
-                 Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(bottomStart=20.dp, bottomEnd=20.dp), colors=CardDefaults.cardColors(containerColor=Green)){
-                   Row(Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically){
-                     Column{ Text("Zeu Savings", color=Color.White, fontWeight=FontWeight.Bold, fontSize=18.sp); Text("Week $weekNum: $curDate | Next: $nextDate | ${members.size} members", color=Color.White, fontSize=11.sp) }
-                     Box(Modifier.size(36.dp).clip(CircleShape).background(Color.White).clickable{ isLocked=true }, contentAlignment=Alignment.Center){ Text("🔒") }
-                   }
-                 }
-                 LazyColumn(Modifier.padding(12.dp)){
-                   item{
-                     Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(16.dp)){
-                       Column(Modifier.padding(16.dp)){
-                         Text("Flexible Savings Input", fontWeight=FontWeight.Bold, fontSize=18.sp)
-                         Text("Week $weekNum: $curDate • Next: $nextDate (+7 days)", fontSize=11.sp, color=Color.Gray)
-                         OutlinedTextField(value=amount, onValueChange={amount=it}, label={Text("Amount VSH")}, modifier=Modifier.fillMaxWidth().padding(top=8.dp))
-                         Row(Modifier.fillMaxWidth().padding(top=8.dp), horizontalArrangement=Arrangement.spacedBy(6.dp)){ listOf("500","1000","5000","10000").forEach{ v-> OutlinedButton(onClick={amount=v}){ Text("+$v", fontSize=11.sp) } } }
-                         Row(Modifier.padding(top=8.dp), horizontalArrangement=Arrangement.spacedBy(8.dp)){ Button(onClick={ curDate=nextDate; nextDate=addDays(curDate,7); weekNum++ }, colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF1565C0))){ Text("CLOSE → $nextDate", fontSize=11.sp) }; OutlinedButton(onClick={ isLocked=true }){ Text("🔒 Lock") } }
-                       }
-                     }
-                     Spacer(Modifier.height(10.dp))
-                   }
-                   item{
-                     Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(16.dp)){
-                       Column(Modifier.padding(12.dp)){
-                         Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically){
-                           Text("Members (${members.size}) - TAP FOR DETAILS 👆", fontWeight=FontWeight.Bold, color=Green, fontSize=14.sp)
-                           Button(onClick={ showAdd=true }, colors=ButtonDefaults.buttonColors(containerColor=Green), contentPadding=PaddingValues(horizontal=10.dp, vertical=4.dp)){ Text("+ Add", fontSize=12.sp) }
-                         }
-                         Spacer(Modifier.height(6.dp))
-                         members.forEach{ m->
-                           Card(Modifier.fillMaxWidth().padding(vertical=4.dp).clickable{ selectedMember=m }, elevation=CardDefaults.cardElevation(2.dp)){
-                             Row(Modifier.padding(12.dp).fillMaxWidth(), verticalAlignment=Alignment.CenterVertically){
-                               Box(Modifier.size(42.dp).clip(CircleShape).background(Color(0xFFFFE082)), contentAlignment=Alignment.Center){ Text(m.initials, fontWeight=FontWeight.Bold) }
-                               Spacer(Modifier.width(10.dp))
-                               Column(Modifier.weight(1f)){ Text("#${m.id} ${m.name}", fontWeight=FontWeight.Bold, fontSize=14.sp); Text("VSH ${m.saved.toInt()} • 📅 $curDate • ${m.status}", fontSize=11.sp, color=Color.Gray) }
-                               Column(horizontalAlignment=Alignment.End){ Text("View >", fontWeight=FontWeight.Bold, color=Green, fontSize=12.sp); Text("Week $weekNum", fontSize=10.sp) }
-                             }
-                           }
-                         }
-                       }
-                     }
-                     Spacer(Modifier.height(10.dp))
-                   }
-                   item{
-                     Card(Modifier.fillMaxWidth(), colors=CardDefaults.cardColors(containerColor=Color(0xFFFFF8E1)), shape=RoundedCornerShape(16.dp)){
-                       Column(Modifier.padding(16.dp), horizontalAlignment=Alignment.CenterHorizontally){
-                         Text("Group Fund Total", fontSize=12.sp); Text("VSH ${box.toInt()}", fontWeight=FontWeight.Bold, fontSize=22.sp); Text("${records.size} records • Week $weekNum: $curDate → $nextDate", fontSize=11.sp, color=Green)
-                       }
-                     }
-                   }
-                 }
-               }
-             }
-           }
-          }
-          EOF
-          cat > app/src/main/AndroidManifest.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-           <application android:label="Zeu V13.4 Personal" android:theme="@android:style/Theme.Material.Light">
-            <activity android:name=".MainActivity" android:exported="true">
-             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
-            </activity>
-           </application>
-          </manifest>
-          EOF
-      - name: Setup Gradle
-        uses: gradle/gradle-build-action@v3
-        with:
-          gradle-version: 8.5
-      - name: Build APK
-        run: |
-          echo "android.useAndroidX=true" > gradle.properties
-          echo "android.useAndroidX=true" > app/gradle.properties
-          mkdir -p ~/.gradle
-          echo "android.useAndroidX=true" > ~/.gradle/gradle.properties
-          gradle :app:assembleDebug
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Zeu-V13.4-Personal-APK
-          path: app/build/outputs/apk/debug/app-debug.apk

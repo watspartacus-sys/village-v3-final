@@ -1,4 +1,4 @@
-name: Build V11 APK
+name: Build V12 APK
 on: [push]
 jobs:
   build:
@@ -9,7 +9,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Create V11
+      - name: Create V12
         run: |
           rm -rf app build.gradle settings.gradle gradle.properties
           mkdir -p app/src/main/java/com/zeu/v3
@@ -34,7 +34,7 @@ jobs:
             defaultConfig {
               applicationId "com.zeu.v3"
               minSdk 24; targetSdk 34
-              versionCode 11; versionName "11.0"
+              versionCode 12; versionName "12.0"
             }
             buildTypes { release { minifyEnabled false } }
             compileOptions {
@@ -70,13 +70,17 @@ jobs:
           import java.text.SimpleDateFormat
           import java.util.*
           data class Member(val id: Int, var name: String, var saved: Double=0.0, var fee: Double=0.0, var loan: Double=0.0)
-          data class Record(val date: String, val memberId: Int, val member: String, val type: String, val amount: Double, val boxAfter: Double)
+          data class Record(val date: String, val week: Int, val memberId: Int, val member: String, val type: String, val amount: Double, val boxAfter: Double)
           class MainActivity : ComponentActivity() {
-           override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); setContent { VillageV11() } }
+           override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); setContent { VillageV12() } }
           }
           @OptIn(ExperimentalMaterial3Api::class)
           @Composable
-          fun VillageV11(){
+          fun VillageV12(){
+           val sdf = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
+           fun addDays(dateStr: String, days: Int): String {
+             return try { val cal = Calendar.getInstance(); cal.time = sdf.parse(dateStr)!!; cal.add(Calendar.DAY_OF_YEAR, days); sdf.format(cal.time) } catch(e: Exception){ dateStr }
+           }
            var nextId by remember { mutableStateOf(4) }
            var members by remember { mutableStateOf(listOf(Member(1,"James"), Member(2,"Mary"), Member(3,"Sarah"))) }
            var records by remember { mutableStateOf(listOf<Record>()) }
@@ -87,7 +91,9 @@ jobs:
            var tab by remember { mutableStateOf(0) }
            var showClearDialog by remember { mutableStateOf(false) }
            var selectedMember by remember { mutableStateOf<Member?>(null) }
-           val today = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date())
+           var weekNum by remember { mutableStateOf(1) }
+           var currentDate by remember { mutableStateOf("22-08-2026") }
+           var nextDate by remember { mutableStateOf("29-08-2026") }
            var box by remember { mutableStateOf(0.0) }
            var social by remember { mutableStateOf(0.0) }
            var totalSavedToday by remember { mutableStateOf(0.0) }
@@ -98,8 +104,8 @@ jobs:
            val combinedSavings = members.sumOf{it.saved}
            val totalGroup = box + social
            if(showClearDialog){
-             AlertDialog(onDismissRequest={showClearDialog=false}, title={Text("Clear ALL?")}, text={Text("Delete all?")},
-             confirmButton={Button(onClick={ members=emptyList(); records=emptyList(); box=0.0; social=0.0; totalSavedToday=0.0; isStarted=false; isClosed=false; nextId=1; showClearDialog=false }){Text("YES")}},
+             AlertDialog(onDismissRequest={showClearDialog=false}, title={Text("Clear ALL?")}, text={Text("Reset to 22-08-2026?")},
+             confirmButton={Button(onClick={ members=emptyList(); records=emptyList(); box=0.0; social=0.0; totalSavedToday=0.0; isStarted=false; isClosed=false; nextId=1; weekNum=1; currentDate="22-08-2026"; nextDate="29-08-2026"; showClearDialog=false }){Text("YES")}},
              dismissButton={OutlinedButton(onClick={showClearDialog=false}){Text("Cancel")}})
            }
            selectedMember?.let{ mem ->
@@ -112,45 +118,48 @@ jobs:
                    Text("${mem.name} Personal", style=MaterialTheme.typography.titleSmall)
                    Text("Saved: ${mem.saved.toInt()} UGX")
                    Text("Loan: ${mem.loan.toInt()} UGX")
-                   Text("Fees: ${mem.fee.toInt()} UGX")
+                   Text("Week ${weekNum}: $currentDate")
                  }}
                  Spacer(Modifier.height(6.dp))
                  Card(Modifier.fillMaxWidth(), colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.secondaryContainer)){ Column(Modifier.padding(10.dp)){
                    Text("Group Combined", style=MaterialTheme.typography.titleSmall)
-                   Text("Combined Savings (All): ${combinedSavings.toInt()} UGX")
-                   Text("Group Box NOW: ${box.toInt()} UGX")
-                   Text("Social: ${social.toInt()} UGX")
-                   Text("Total Group Money: ${totalGroup.toInt()} UGX", style=MaterialTheme.typography.titleSmall)
+                   Text("Combined All: ${combinedSavings.toInt()} UGX")
+                   Text("Box NOW: ${box.toInt()} UGX")
+                   Text("Next Saving: $nextDate")
                  }}
                  Spacer(Modifier.height(6.dp))
-                 Text("Her Transactions:", style=MaterialTheme.typography.titleSmall)
-                 LazyColumn(Modifier.height(180.dp)){
-                   if(memRecords.isEmpty()){ item{ Text("No records") } }
-                   else { items(memRecords.reversed()){ r-> Text("${r.date} ${r.type} ${r.amount.toInt()} Box:${r.boxAfter.toInt()}", style=MaterialTheme.typography.bodySmall) } }
+                 Text("Transactions with Dates:", style=MaterialTheme.typography.titleSmall)
+                 LazyColumn(Modifier.height(220.dp)){
+                   if(memRecords.isEmpty()){ item{ Text("No records yet for ${mem.name}") } }
+                   else { items(memRecords.reversed()){ r-> Card(Modifier.fillMaxWidth().padding(vertical=2.dp)){ Column(Modifier.padding(6.dp)){ Text("📅 ${r.date} (Week ${r.week})", style=MaterialTheme.typography.labelMedium); Text("${r.type} - ${r.amount.toInt()} UGX - Box:${r.boxAfter.toInt()}", style=MaterialTheme.typography.bodySmall) } } } }
                  }
                }
              },
              confirmButton={Button(onClick={selectedMember=null}){Text("Close")}})
            }
-           Scaffold(topBar={TopAppBar(title={Text("Village V11")})}){pad->
+           Scaffold(topBar={TopAppBar(title={Text("Village V12 - Weekly")})}){pad->
             Column(Modifier.padding(pad).padding(10.dp)){
-             Card(colors=CardDefaults.cardColors(containerColor=if(isClosed) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer)){
+             Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.primaryContainer)){
               Column(Modifier.padding(10.dp)){
-               Text("Date: $today", style=MaterialTheme.typography.titleSmall)
-               Text("Combined: ${combinedSavings.toInt()} | Box: ${box.toInt()} | Social: ${social.toInt()}", style=MaterialTheme.typography.titleSmall)
-               Text("Week: ${totalSavedToday.toInt()} | Total Group: ${totalGroup.toInt()} UGX", style=MaterialTheme.typography.bodySmall)
-               Row(horizontalArrangement=Arrangement.spacedBy(6.dp), modifier=Modifier.padding(top=4.dp)){
-                if(!isStarted){ Button(onClick={isStarted=true; isClosed=false}){Text("START WEEK")} }
-                else if(!isClosed){ Button(onClick={isClosed=true}, colors=ButtonDefaults.buttonColors(containerColor=MaterialTheme.colorScheme.error)){Text("CLOSE WEEK")} }
-                else { Button(onClick={isStarted=false; isClosed=false}){Text("New Week")} }
+               Text("Week $weekNum: $currentDate", style=MaterialTheme.typography.titleMedium)
+               Text("Next Saving: $nextDate ( +7 days )", style=MaterialTheme.typography.titleSmall)
+               Text("Combined: ${combinedSavings.toInt()} | Box: ${box.toInt()} | Total: ${totalGroup.toInt()}", style=MaterialTheme.typography.bodySmall)
+               Row(horizontalArrangement=Arrangement.spacedBy(6.dp), modifier=Modifier.padding(top=6.dp)){
+                if(!isStarted){
+                  Button(onClick={isStarted=true; isClosed=false}){Text("START ${currentDate}")}
+                } else if(!isClosed){
+                  Button(onClick={isClosed=true; currentDate=nextDate; nextDate=addDays(currentDate,7); weekNum++; isStarted=false; totalSavedToday=0.0}, colors=ButtonDefaults.buttonColors(containerColor=MaterialTheme.colorScheme.error)){Text("CLOSE -> $nextDate")}
+                } else {
+                  Button(onClick={isStarted=true; isClosed=false}){Text("START Week $weekNum")}
+                }
                 OutlinedButton(onClick={showClearDialog=true}){Text("Clear")}
                }
               }
              }
              TabRow(selectedTabIndex=tab){
-              Tab(selected=tab==0, onClick={tab=0}, text={Text("Members #")})
-              Tab(selected=tab==1, onClick={tab==1}, text={Text("Social")})
-              Tab(selected=tab==2, onClick={tab==2}, text={Text("History")})
+              Tab(selected=tab==0, onClick={tab=0}, text={Text("Members")})
+              Tab(selected=tab==1, onClick={tab=1}, text={Text("Social")})
+              Tab(selected=tab==2, onClick={tab==2}, text={Text("All History")})
              }
              if(tab==0){
                Row(Modifier.padding(top=6.dp)){
@@ -160,38 +169,35 @@ jobs:
                LazyColumn(Modifier.weight(1f).padding(top=4.dp)){
                 items(members.sortedBy{it.id}){m->
                  val canLoan = m.saved >= MIN_SAVING && box >= LOAN_AMT && m.loan==0.0
-                 val reason = when {
-                   m.loan>0 -> "Has loan ${m.loan.toInt()}"
-                   m.saved < MIN_SAVING -> "Saved ${m.saved.toInt()} <120k NO"
-                   box < LOAN_AMT -> "Box ${box.toInt()}<150k"
-                   else -> "ELIGIBLE!"
-                 }
-                 Card(Modifier.fillMaxWidth().padding(vertical=3.dp).clickable{ selectedMember=m }, colors=CardDefaults.cardColors(containerColor=if(canLoan) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant)){
+                 Card(Modifier.fillMaxWidth().padding(vertical=3.dp).clickable{ selectedMember=m }){
                   Column(Modifier.padding(8.dp)){
                    Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween){
-                     Text("#${m.id} ${m.name} - S:${m.saved.toInt()} L:${m.loan.toInt()}", style=MaterialTheme.typography.titleSmall)
-                     Text("View >", color=MaterialTheme.colorScheme.primary, style=MaterialTheme.typography.labelSmall)
+                     Text("#${m.id} ${m.name} - S:${m.saved.toInt()}", style=MaterialTheme.typography.titleSmall)
+                     Text("📅 $currentDate >", color=MaterialTheme.colorScheme.primary, style=MaterialTheme.typography.labelSmall)
                    }
-                   Text(reason, style=MaterialTheme.typography.labelSmall)
+                   Text(if(canLoan) "ELIGIBLE for loan!" else "Saved ${m.saved.toInt()} / 120k", style=MaterialTheme.typography.labelSmall)
                    if(isStarted &&!isClosed){
                     Row(Modifier.padding(top=4.dp), horizontalArrangement=Arrangement.spacedBy(3.dp)){
-                     Button(onClick={ members=members.map{if(it.id==m.id) it.copy(saved=it.saved+FIXED) else it}; box+=FIXED; totalSavedToday+=FIXED; records=records+Record(today,m.id,m.name,"Save 5k",FIXED,box) }){Text("Save5k", style=MaterialTheme.typography.labelSmall)}
-                     OutlinedTextField(value=feeAmount, onValueChange={feeAmount=it}, modifier=Modifier.width(60.dp), label={Text("Fee")})
-                     Button(onClick={ val f=feeAmount.toDoubleOrNull()?:1000.0; members=members.map{if(it.id==m.id) it.copy(fee=it.fee+f) else it}; social+=f; records=records+Record(today,m.id,m.name,"Late",f,box) }){Text("Late", style=MaterialTheme.typography.labelSmall)}
-                     Button(enabled=canLoan, onClick={ members=members.map{if(it.id==m.id) it.copy(loan=LOAN_AMT) else it}; box-=LOAN_AMT; records=records+Record(today,m.id,m.name,"Loan 150k",LOAN_AMT,box) }){Text("Loan150k", style=MaterialTheme.typography.labelSmall)}
-                     Button(onClick={ if(m.loan>0){ members=members.map{if(it.id==m.id) it.copy(loan=0.0) else it}; box+=RETURN_AMT; records=records+Record(today,m.id,m.name,"Ret 165k",RETURN_AMT,box) } }){Text("Ret", style=MaterialTheme.typography.labelSmall)}
+                     Button(onClick={ members=members.map{if(it.id==m.id) it.copy(saved=it.saved+FIXED) else it}; box+=FIXED; totalSavedToday+=FIXED; records=records+Record(currentDate,weekNum,m.id,m.name,"Save 5k",FIXED,box) }){Text("Save5k", style=MaterialTheme.typography.labelSmall)}
+                     OutlinedTextField(value=feeAmount, onValueChange={feeAmount=it}, modifier=Modifier.width(55.dp), label={Text("Fee")})
+                     Button(onClick={ val f=feeAmount.toDoubleOrNull()?:1000.0; members=members.map{if(it.id==m.id) it.copy(fee=it.fee+f) else it}; social+=f; records=records+Record(currentDate,weekNum,m.id,m.name,"Late",f,box) }){Text("Late", style=MaterialTheme.typography.labelSmall)}
+                     Button(enabled=canLoan, onClick={ members=members.map{if(it.id==m.id) it.copy(loan=LOAN_AMT) else it}; box-=LOAN_AMT; records=records+Record(currentDate,weekNum,m.id,m.name,"Loan 150k",LOAN_AMT,box) }){Text("Loan", style=MaterialTheme.typography.labelSmall)}
+                     Button(onClick={ if(m.loan>0){ members=members.map{if(it.id==m.id) it.copy(loan=0.0) else it}; box+=RETURN_AMT; records=records+Record(currentDate,weekNum,m.id,m.name,"Ret 165k",RETURN_AMT,box) } }){Text("Ret", style=MaterialTheme.typography.labelSmall)}
                     }
                    }
                   }
                  }
                 }
                }
-             } else if(tab==1){
+             } else if(tab==2){
                LazyColumn(Modifier.weight(1f).padding(top=6.dp)){
-                item{ Card(Modifier.fillMaxWidth()){ Column(Modifier.padding(12.dp)){ Text("COMBINED SAVINGS: ${combinedSavings.toInt()}"); Text("BOX: ${box.toInt()}"); Text("SOCIAL: ${social.toInt()}"); Text("TOTAL: ${totalGroup.toInt()}", style=MaterialTheme.typography.headlineSmall) } } }
+                 items(records.reversed()){ r->
+                   Text("Week${r.week} 📅 ${r.date} | #${r.memberId} ${r.member} | ${r.type}", style=MaterialTheme.typography.bodySmall)
+                   Text(" Amount:${r.amount.toInt()} Box:${r.boxAfter.toInt()}", style=MaterialTheme.typography.labelSmall, modifier=Modifier.padding(bottom=4.dp))
+                 }
                }
              } else {
-               LazyColumn(Modifier.weight(1f).padding(top=6.dp)){ items(records.reversed()){ r-> Text("#${r.memberId} ${r.member} | ${r.type} | Box:${r.boxAfter.toInt()}", style=MaterialTheme.typography.bodySmall) } }
+               LazyColumn(Modifier.weight(1f)){ item{ Text("Social: ${social.toInt()} UGX") } }
              }
             }
            }
@@ -200,7 +206,7 @@ jobs:
           cat > app/src/main/AndroidManifest.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-           <application android:label="Village V11" android:theme="@android:style/Theme.Material.Light">
+           <application android:label="Village V12" android:theme="@android:style/Theme.Material.Light">
             <activity android:name=".MainActivity" android:exported="true">
              <intent-filter>
               <action android:name="android.intent.action.MAIN"/>
@@ -224,5 +230,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Village-V11-APK
+          name: Village-V12-APK
           path: app/build/outputs/apk/debug/app-debug.apk

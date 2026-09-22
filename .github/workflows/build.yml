@@ -1,4 +1,4 @@
-name: Build V9 APK
+name: Build V11 APK
 on: [push]
 jobs:
   build:
@@ -9,7 +9,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Create V9
+      - name: Create V11
         run: |
           rm -rf app build.gradle settings.gradle gradle.properties
           mkdir -p app/src/main/java/com/zeu/v3
@@ -34,7 +34,7 @@ jobs:
             defaultConfig {
               applicationId "com.zeu.v3"
               minSdk 24; targetSdk 34
-              versionCode 9; versionName "9.0"
+              versionCode 11; versionName "11.0"
             }
             buildTypes { release { minifyEnabled false } }
             compileOptions {
@@ -59,6 +59,7 @@ jobs:
           import android.os.Bundle
           import androidx.activity.ComponentActivity
           import androidx.activity.compose.setContent
+          import androidx.compose.foundation.clickable
           import androidx.compose.foundation.layout.*
           import androidx.compose.foundation.lazy.LazyColumn
           import androidx.compose.foundation.lazy.items
@@ -71,13 +72,13 @@ jobs:
           data class Member(val id: Int, var name: String, var saved: Double=0.0, var fee: Double=0.0, var loan: Double=0.0)
           data class Record(val date: String, val memberId: Int, val member: String, val type: String, val amount: Double, val boxAfter: Double)
           class MainActivity : ComponentActivity() {
-           override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); setContent { VillageV9() } }
+           override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); setContent { VillageV11() } }
           }
           @OptIn(ExperimentalMaterial3Api::class)
           @Composable
-          fun VillageV9(){
+          fun VillageV11(){
            var nextId by remember { mutableStateOf(4) }
-           var members by remember { mutableStateOf(listOf(Member(1,"James"), Member(2,"Mary"), Member(3,"Amina"))) }
+           var members by remember { mutableStateOf(listOf(Member(1,"James"), Member(2,"Mary"), Member(3,"Sarah"))) }
            var records by remember { mutableStateOf(listOf<Record>()) }
            var newName by remember { mutableStateOf("") }
            var feeAmount by remember { mutableStateOf("1000") }
@@ -85,40 +86,67 @@ jobs:
            var isClosed by remember { mutableStateOf(false) }
            var tab by remember { mutableStateOf(0) }
            var showClearDialog by remember { mutableStateOf(false) }
-           var message by remember { mutableStateOf("") }
+           var selectedMember by remember { mutableStateOf<Member?>(null) }
            val today = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date())
            var box by remember { mutableStateOf(0.0) }
            var social by remember { mutableStateOf(0.0) }
            var totalSavedToday by remember { mutableStateOf(0.0) }
            val FIXED = 5000.0
            val LOAN_AMT = 150000.0
-           val MIN_SAVING_TO_LOAN = 120000.0
-           val INTEREST = 0.10
-           val RETURN_AMT = LOAN_AMT + LOAN_AMT*INTEREST
+           val MIN_SAVING = 120000.0
+           val RETURN_AMT = 165000.0
+           val combinedSavings = members.sumOf{it.saved}
+           val totalGroup = box + social
            if(showClearDialog){
              AlertDialog(onDismissRequest={showClearDialog=false}, title={Text("Clear ALL?")}, text={Text("Delete all?")},
-             confirmButton={Button(onClick={ members=emptyList(); records=emptyList(); box=0.0; social=0.0; totalSavedToday=0.0; isStarted=false; isClosed=false; nextId=1; showClearDialog=false; message="" }){Text("YES CLEAR")}},
+             confirmButton={Button(onClick={ members=emptyList(); records=emptyList(); box=0.0; social=0.0; totalSavedToday=0.0; isStarted=false; isClosed=false; nextId=1; showClearDialog=false }){Text("YES")}},
              dismissButton={OutlinedButton(onClick={showClearDialog=false}){Text("Cancel")}})
            }
-           Scaffold(topBar={TopAppBar(title={Text("Village V9 - $today")})}){pad->
+           selectedMember?.let{ mem ->
+             val memRecords = records.filter{ it.memberId == mem.id }
+             AlertDialog(onDismissRequest={selectedMember=null},
+             title={Text("#${mem.id} ${mem.name}")},
+             text={
+               Column{
+                 Card(Modifier.fillMaxWidth(), colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.primaryContainer)){ Column(Modifier.padding(10.dp)){
+                   Text("${mem.name} Personal", style=MaterialTheme.typography.titleSmall)
+                   Text("Saved: ${mem.saved.toInt()} UGX")
+                   Text("Loan: ${mem.loan.toInt()} UGX")
+                   Text("Fees: ${mem.fee.toInt()} UGX")
+                 }}
+                 Spacer(Modifier.height(6.dp))
+                 Card(Modifier.fillMaxWidth(), colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.secondaryContainer)){ Column(Modifier.padding(10.dp)){
+                   Text("Group Combined", style=MaterialTheme.typography.titleSmall)
+                   Text("Combined Savings (All): ${combinedSavings.toInt()} UGX")
+                   Text("Group Box NOW: ${box.toInt()} UGX")
+                   Text("Social: ${social.toInt()} UGX")
+                   Text("Total Group Money: ${totalGroup.toInt()} UGX", style=MaterialTheme.typography.titleSmall)
+                 }}
+                 Spacer(Modifier.height(6.dp))
+                 Text("Her Transactions:", style=MaterialTheme.typography.titleSmall)
+                 LazyColumn(Modifier.height(180.dp)){
+                   if(memRecords.isEmpty()){ item{ Text("No records") } }
+                   else { items(memRecords.reversed()){ r-> Text("${r.date} ${r.type} ${r.amount.toInt()} Box:${r.boxAfter.toInt()}", style=MaterialTheme.typography.bodySmall) } }
+                 }
+               }
+             },
+             confirmButton={Button(onClick={selectedMember=null}){Text("Close")}})
+           }
+           Scaffold(topBar={TopAppBar(title={Text("Village V11")})}){pad->
             Column(Modifier.padding(pad).padding(10.dp)){
              Card(colors=CardDefaults.cardColors(containerColor=if(isClosed) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer)){
               Column(Modifier.padding(10.dp)){
-               Text(if(isClosed) "CLOSED - Box: ${box.toInt()} LOCKED!" else if(isStarted) "WEEKLY: $today" else "Ready: $today - Weekly", style=MaterialTheme.typography.titleMedium)
-               if(message.isNotBlank()){ Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.errorContainer)){ Text(message, modifier=Modifier.padding(6.dp), style=MaterialTheme.typography.bodySmall) } }
+               Text("Date: $today", style=MaterialTheme.typography.titleSmall)
+               Text("Combined: ${combinedSavings.toInt()} | Box: ${box.toInt()} | Social: ${social.toInt()}", style=MaterialTheme.typography.titleSmall)
+               Text("Week: ${totalSavedToday.toInt()} | Total Group: ${totalGroup.toInt()} UGX", style=MaterialTheme.typography.bodySmall)
                Row(horizontalArrangement=Arrangement.spacedBy(6.dp), modifier=Modifier.padding(top=4.dp)){
-                if(!isStarted){ Button(onClick={isStarted=true; isClosed=false; message="Week started!"}){Text("START WEEK")} }
-                else if(!isClosed){ Button(onClick={isClosed=true; message="Week closed! Box: ${box.toInt()}"}, colors=ButtonDefaults.buttonColors(containerColor=MaterialTheme.colorScheme.error)){Text("CLOSE WEEK")} }
-                else { Button(onClick={isStarted=false; isClosed=false; message=""}){Text("New Week")} }
+                if(!isStarted){ Button(onClick={isStarted=true; isClosed=false}){Text("START WEEK")} }
+                else if(!isClosed){ Button(onClick={isClosed=true}, colors=ButtonDefaults.buttonColors(containerColor=MaterialTheme.colorScheme.error)){Text("CLOSE WEEK")} }
+                else { Button(onClick={isStarted=false; isClosed=false}){Text("New Week")} }
                 OutlinedButton(onClick={showClearDialog=true}){Text("Clear")}
                }
               }
              }
-             Spacer(Modifier.height(6.dp))
-             Card(Modifier.fillMaxWidth()){ Column(Modifier.padding(8.dp)){
-               Text("Week Saved: ${totalSavedToday.toInt()} | Box NOW: ${box.toInt()} | Social: ${social.toInt()}", style=MaterialTheme.typography.titleSmall)
-               Text("Rule: Need >=120k own savings to get 150k loan", style=MaterialTheme.typography.bodySmall)
-             }}
              TabRow(selectedTabIndex=tab){
               Tab(selected=tab==0, onClick={tab=0}, text={Text("Members #")})
               Tab(selected=tab==1, onClick={tab==1}, text={Text("Social")})
@@ -129,30 +157,29 @@ jobs:
                 OutlinedTextField(value=newName, onValueChange={newName=it}, label={Text("Add member")}, modifier=Modifier.weight(1f))
                 Button(onClick={if(newName.isNotBlank()){members=members+Member(nextId,newName); nextId++; newName=""}}, Modifier.padding(start=4.dp)){Text("Add #${nextId}")}
                }
-               LazyColumn(Modifier.weight(1f)){
+               LazyColumn(Modifier.weight(1f).padding(top=4.dp)){
                 items(members.sortedBy{it.id}){m->
-                 val canLoan = m.saved >= MIN_SAVING_TO_LOAN && box >= LOAN_AMT && m.loan==0.0
+                 val canLoan = m.saved >= MIN_SAVING && box >= LOAN_AMT && m.loan==0.0
                  val reason = when {
                    m.loan>0 -> "Has loan ${m.loan.toInt()}"
-                   m.saved < MIN_SAVING_TO_LOAN -> "Saved ${m.saved.toInt()} < 120k - NOT ELIGIBLE!"
-                   box < LOAN_AMT -> "Box ${box.toInt()} < 150k - No group money!"
-                   else -> "ELIGIBLE for 150k!"
+                   m.saved < MIN_SAVING -> "Saved ${m.saved.toInt()} <120k NO"
+                   box < LOAN_AMT -> "Box ${box.toInt()}<150k"
+                   else -> "ELIGIBLE!"
                  }
-                 Card(Modifier.fillMaxWidth().padding(vertical=3.dp), colors=CardDefaults.cardColors(containerColor=if(canLoan) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant)){
+                 Card(Modifier.fillMaxWidth().padding(vertical=3.dp).clickable{ selectedMember=m }, colors=CardDefaults.cardColors(containerColor=if(canLoan) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant)){
                   Column(Modifier.padding(8.dp)){
-                   Text("#${m.id} ${m.name} - Saved:${m.saved.toInt()} | Loan:${m.loan.toInt()}", style=MaterialTheme.typography.titleSmall)
-                   Text(reason, style=MaterialTheme.typography.labelSmall, color=if(canLoan) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                   Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween){
+                     Text("#${m.id} ${m.name} - S:${m.saved.toInt()} L:${m.loan.toInt()}", style=MaterialTheme.typography.titleSmall)
+                     Text("View >", color=MaterialTheme.colorScheme.primary, style=MaterialTheme.typography.labelSmall)
+                   }
+                   Text(reason, style=MaterialTheme.typography.labelSmall)
                    if(isStarted &&!isClosed){
                     Row(Modifier.padding(top=4.dp), horizontalArrangement=Arrangement.spacedBy(3.dp)){
-                     Button(onClick={ members=members.map{if(it.id==m.id) it.copy(saved=it.saved+FIXED) else it}; box+=FIXED; totalSavedToday+=FIXED; records=records+Record(today,m.id,m.name,"Save 5k",FIXED,box); message="" }){Text("Save5k", style=MaterialTheme.typography.labelSmall)}
+                     Button(onClick={ members=members.map{if(it.id==m.id) it.copy(saved=it.saved+FIXED) else it}; box+=FIXED; totalSavedToday+=FIXED; records=records+Record(today,m.id,m.name,"Save 5k",FIXED,box) }){Text("Save5k", style=MaterialTheme.typography.labelSmall)}
                      OutlinedTextField(value=feeAmount, onValueChange={feeAmount=it}, modifier=Modifier.width(60.dp), label={Text("Fee")})
-                     Button(onClick={ val f=feeAmount.toDoubleOrNull()?:1000.0; members=members.map{if(it.id==m.id) it.copy(fee=it.fee+f) else it}; social+=f; records=records+Record(today,m.id,m.name,"Late/Fee",f,box) }){Text("Late", style=MaterialTheme.typography.labelSmall)}
-                     Button(enabled=canLoan, onClick={
-                       if(m.saved < MIN_SAVING_TO_LOAN){ message="#${m.id} SAVED ONLY ${m.saved.toInt()}! Need 120k!" }
-                       else if(box < LOAN_AMT){ message="Box ${box.toInt()} only! Need 150k!" }
-                       else { members=members.map{if(it.id==m.id) it.copy(loan=LOAN_AMT) else it}; box-=LOAN_AMT; records=records+Record(today,m.id,m.name,"Loan 150k",LOAN_AMT,box); message="#${m.id} got 150k! Box left ${box.toInt()}" }
-                     }){Text("Loan150k", style=MaterialTheme.typography.labelSmall)}
-                     Button(onClick={ if(m.loan>=LOAN_AMT){ members=members.map{if(it.id==m.id) it.copy(loan=0.0) else it}; box+=RETURN_AMT; records=records+Record(today,m.id,m.name,"Return 165k",RETURN_AMT,box); message="Returned 165k Box ${box.toInt()}" } else { message="No loan!" } }){Text("Ret165k", style=MaterialTheme.typography.labelSmall)}
+                     Button(onClick={ val f=feeAmount.toDoubleOrNull()?:1000.0; members=members.map{if(it.id==m.id) it.copy(fee=it.fee+f) else it}; social+=f; records=records+Record(today,m.id,m.name,"Late",f,box) }){Text("Late", style=MaterialTheme.typography.labelSmall)}
+                     Button(enabled=canLoan, onClick={ members=members.map{if(it.id==m.id) it.copy(loan=LOAN_AMT) else it}; box-=LOAN_AMT; records=records+Record(today,m.id,m.name,"Loan 150k",LOAN_AMT,box) }){Text("Loan150k", style=MaterialTheme.typography.labelSmall)}
+                     Button(onClick={ if(m.loan>0){ members=members.map{if(it.id==m.id) it.copy(loan=0.0) else it}; box+=RETURN_AMT; records=records+Record(today,m.id,m.name,"Ret 165k",RETURN_AMT,box) } }){Text("Ret", style=MaterialTheme.typography.labelSmall)}
                     }
                    }
                   }
@@ -161,14 +188,10 @@ jobs:
                }
              } else if(tab==1){
                LazyColumn(Modifier.weight(1f).padding(top=6.dp)){
-                item{ Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.tertiaryContainer), modifier=Modifier.fillMaxWidth()){ Column(Modifier.padding(12.dp)){ Text("SOCIAL FUND"); Text("${social.toInt()} UGX", style=MaterialTheme.typography.headlineMedium) } }; Spacer(Modifier.height(8.dp)) }
-                items(records.filter{it.type.contains("Fee")}.reversed()){ r-> Card(Modifier.fillMaxWidth().padding(vertical=2.dp)){ Column(Modifier.padding(8.dp)){ Text("#${r.memberId} ${r.member} - ${r.amount.toInt()} UGX") }} }
+                item{ Card(Modifier.fillMaxWidth()){ Column(Modifier.padding(12.dp)){ Text("COMBINED SAVINGS: ${combinedSavings.toInt()}"); Text("BOX: ${box.toInt()}"); Text("SOCIAL: ${social.toInt()}"); Text("TOTAL: ${totalGroup.toInt()}", style=MaterialTheme.typography.headlineSmall) } } }
                }
              } else {
-               LazyColumn(Modifier.weight(1f).padding(top=6.dp)){
-                item{ Text("History + Box After", style=MaterialTheme.typography.titleMedium) }
-                items(records.reversed()){ r-> Text("#${r.memberId} ${r.member} | ${r.type} | Box:${r.boxAfter.toInt()} | ${r.date}", style=MaterialTheme.typography.bodySmall, modifier=Modifier.padding(vertical=2.dp)) }
-               }
+               LazyColumn(Modifier.weight(1f).padding(top=6.dp)){ items(records.reversed()){ r-> Text("#${r.memberId} ${r.member} | ${r.type} | Box:${r.boxAfter.toInt()}", style=MaterialTheme.typography.bodySmall) } }
              }
             }
            }
@@ -177,7 +200,7 @@ jobs:
           cat > app/src/main/AndroidManifest.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-           <application android:label="Village V9" android:theme="@android:style/Theme.Material.Light">
+           <application android:label="Village V11" android:theme="@android:style/Theme.Material.Light">
             <activity android:name=".MainActivity" android:exported="true">
              <intent-filter>
               <action android:name="android.intent.action.MAIN"/>
@@ -201,5 +224,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Village-V9-APK
+          name: Village-V11-APK
           path: app/build/outputs/apk/debug/app-debug.apk

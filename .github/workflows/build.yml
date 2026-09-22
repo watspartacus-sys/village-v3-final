@@ -1,4 +1,4 @@
-name: Build V13 Lock APK
+name: Build V13.1 Fixed Lock
 on: [push]
 jobs:
   build:
@@ -9,7 +9,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Create V13 Lock
+      - name: Create Fixed V13
         run: |
           rm -rf app build.gradle settings.gradle gradle.properties
           mkdir -p app/src/main/java/com/zeu/v3
@@ -34,13 +34,10 @@ jobs:
             defaultConfig {
               applicationId "com.zeu.v3"
               minSdk 24; targetSdk 34
-              versionCode 13; versionName "13.0-lock"
+              versionCode 14; versionName "13.1-fixed"
             }
             buildTypes { release { minifyEnabled false } }
-            compileOptions {
-              sourceCompatibility JavaVersion.VERSION_17
-              targetCompatibility JavaVersion.VERSION_17
-            }
+            compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
             kotlinOptions { jvmTarget = '17' }
             buildFeatures { compose true }
             composeOptions { kotlinCompilerExtensionVersion '1.5.10' }
@@ -52,6 +49,7 @@ jobs:
             implementation platform('androidx.compose:compose-bom:2024.02.00')
             implementation 'androidx.compose.ui:ui'
             implementation 'androidx.compose.material3:material3'
+            implementation 'androidx.compose.foundation:foundation'
           }
           EOF
           cat > app/src/main/java/com/zeu/v3/MainActivity.kt <<'EOF'
@@ -60,6 +58,7 @@ jobs:
           import androidx.activity.ComponentActivity
           import androidx.activity.compose.setContent
           import androidx.compose.foundation.background
+          import androidx.compose.foundation.clickable
           import androidx.compose.foundation.layout.*
           import androidx.compose.foundation.lazy.LazyColumn
           import androidx.compose.foundation.shape.CircleShape
@@ -75,131 +74,64 @@ jobs:
           import androidx.compose.ui.unit.sp
           import java.text.SimpleDateFormat
           import java.util.*
-          data class Member(val id: Int, var name: String, var initials: String, var saved: Double=0.0, var status: String="Due")
-          data class Record(val date: String, val type: String, val amount: Double)
+          data class Member(val id: Int, val name: String, val initials: String, var saved: Double, var status: String)
           class MainActivity : ComponentActivity() {
-           override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); setContent { ZeuWithLock() } }
+           override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); setContent { ZeuApp() } }
           }
           @Composable
-          fun ZeuWithLock(){
+          fun ZeuApp(){
            var appPin by remember { mutableStateOf("") }
            var inputPin by remember { mutableStateOf("") }
            var isLocked by remember { mutableStateOf(true) }
-           var isSettingPin by remember { mutableStateOf(true) }
+           var isSetting by remember { mutableStateOf(true) }
            var error by remember { mutableStateOf("") }
-           var members by remember { mutableStateOf(listOf(
-             Member(1,"Amina K.","AK",1000.0,"Paid"),
-             Member(2,"Joseph M.","JM",1000.0,"Paid"),
-             Member(3,"Grace W.","GW",0.0,"Due"),
-             Member(4,"Ben T.","BT",1000.0,"Paid")
-           )) }
            var amount by remember { mutableStateOf("1000") }
            var curDate by remember { mutableStateOf("22-08-2026") }
            var nextDate by remember { mutableStateOf("29-08-2026") }
            var weekNum by remember { mutableStateOf(1) }
            var box by remember { mutableStateOf(84500.0) }
+           var members by remember { mutableStateOf(listOf(Member(1,"Amina K.","AK",1000.0,"Paid"), Member(2,"Joseph M.","JM",1000.0,"Paid"), Member(3,"Grace W.","GW",0.0,"Due"), Member(4,"Ben T.","BT",1000.0,"Paid"))) }
            val Green = Color(0xFF2E7D32)
-           fun addDays(d: String, days: Int): String { try{ val c=Calendar.getInstance(); c.time=SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).parse(d)!!; c.add(Calendar.DAY_OF_YEAR,days); return SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(c.time)}catch(e:Exception){return d} }
+           fun addDays(d: String, days: Int): String { return try { val sdf=SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()); val c=Calendar.getInstance(); c.time=sdf.parse(d)!!; c.add(Calendar.DAY_OF_YEAR, days); sdf.format(c.time) } catch(e:Exception){ d } }
            if(isLocked){
              Box(Modifier.fillMaxSize().background(Green), contentAlignment=Alignment.Center){
                Card(Modifier.padding(20.dp).fillMaxWidth(), shape=RoundedCornerShape(24.dp)){
                  Column(Modifier.padding(24.dp), horizontalAlignment=Alignment.CenterHorizontally){
-                   Text("🔒", fontSize=50.sp)
-                   Spacer(Modifier.height(10.dp))
-                   Text(if(isSettingPin) "Set Your PIN" else "Enter PIN to Unlock", fontWeight=FontWeight.Bold, fontSize=20.sp)
-                   Text(if(isSettingPin) "Create 4-digit PIN for Zeu Savings" else "Zeu Savings Locked • Week $weekNum: $curDate", fontSize=12.sp, color=Color.Gray)
-                   Spacer(Modifier.height(20.dp))
-                   OutlinedTextField(value=inputPin, onValueChange={ if(it.length<=4) inputPin=it.filter{ch->ch.isDigit()} }, label={Text("4-digit PIN")}, modifier=Modifier.fillMaxWidth())
-                   if(error.isNotEmpty()){ Text(error, color=Color.Red, fontSize=12.sp, modifier=Modifier.padding(top=6.dp)) }
+                   Text("🔒", fontSize=48.sp)
+                   Text(if(isSetting) "Set Your PIN" else "Enter PIN", fontWeight=FontWeight.Bold, fontSize=20.sp)
+                   Text(if(isSetting) "Create 4-digit PIN" else "Week $weekNum: $curDate -> $nextDate", fontSize=12.sp, color=Color.Gray)
                    Spacer(Modifier.height(16.dp))
-                   Button(onClick={
-                     if(isSettingPin){
-                       if(inputPin.length==4){ appPin=inputPin; isSettingPin=false; isLocked=false; inputPin=""; error="" } else { error="PIN must be 4 digits" }
-                     } else {
-                       if(inputPin==appPin){ isLocked=false; inputPin=""; error="" } else { error="Wrong PIN! Try again" }
-                     }
-                   }, modifier=Modifier.fillMaxWidth(), colors=ButtonDefaults.buttonColors(containerColor=Green)){ Text(if(isSettingPin) "Set PIN & Open" else "Unlock") }
-                   if(!isSettingPin){ TextButton(onClick={ isSettingPin=true; inputPin=""; error="Set new PIN" }){ Text("Forgot PIN? Reset", fontSize=11.sp) } }
+                   OutlinedTextField(value=inputPin, onValueChange={ if(it.length<=4) inputPin=it.filter{ch->ch.isDigit()} }, label={Text("4-digit PIN")}, modifier=Modifier.fillMaxWidth())
+                   if(error!="") Text(error, color=Color.Red, fontSize=12.sp)
+                   Spacer(Modifier.height(12.dp))
+                   Button(onClick={ if(isSetting){ if(inputPin.length==4){ appPin=inputPin; isSetting=false; isLocked=false; inputPin=""; error="" } else error="Enter 4 digits" } else { if(inputPin==appPin){ isLocked=false; inputPin=""; error="" } else error="Wrong PIN!" } }, modifier=Modifier.fillMaxWidth(), colors=ButtonDefaults.buttonColors(containerColor=Green)){ Text(if(isSetting) "Set PIN" else "Unlock") }
+                   if(!isSetting) TextButton(onClick={ isSetting=true; error="Set new PIN" }){ Text("Forgot? Reset PIN") }
                  }
                }
              }
            } else {
-             Scaffold(bottomBar={
-               NavigationBar{ NavigationBarItem(selected=true, onClick={}, icon={Text("🏠")}, label={Text("Home")}); NavigationBarItem(selected=false, onClick={}, icon={Text("💰")}, label={Text("Savings")}); NavigationBarItem(selected=false, onClick={isLocked=true; inputPin=""}, icon={Text("🔒")}, label={Text("Lock")}) }
-             }){pad->
-              Column(Modifier.padding(pad).background(Color(0xFFF5F5F5)).fillMaxSize()){
-               Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(bottomStart=20.dp, bottomEnd=20.dp), colors=CardDefaults.cardColors(containerColor=Green)){
-                 Row(Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically){
-                   Row(verticalAlignment=Alignment.CenterVertically){ Box(Modifier.size(40.dp).clip(CircleShape).background(Color.White), contentAlignment=Alignment.Center){ Text("🌿") }; Spacer(Modifier.width(10.dp)); Column{ Text("Zeu Savings", color=Color.White, fontWeight=FontWeight.Bold); Text("Week $weekNum: $curDate → Next: $nextDate", color=Color.White, fontSize=11.sp) } }
-                   Text("🔒", modifier=Modifier.clip(CircleShape).background(Color.White).padding(8.dp).clickable{ isLocked=true })
-                 }
-               }
-               LazyColumn(Modifier.padding(12.dp)){
-                 item{
-                   Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(16.dp)){
-                     Column(Modifier.padding(16.dp)){
-                       Text("Flexible Savings Input", fontWeight=FontWeight.Bold, fontSize=18.sp)
-                       Text("Week $weekNum: $curDate • Next Saving: $nextDate (+7 days)", fontSize=11.sp, color=Color.Gray)
-                       Spacer(Modifier.height(10.dp))
-                       OutlinedTextField(value=amount, onValueChange={amount=it}, label={Text("Amount (VSH)")}, leadingIcon={Text("VSH", color=Green, fontWeight=FontWeight.Bold)}, modifier=Modifier.fillMaxWidth())
-                       Spacer(Modifier.height(10.dp))
-                       Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween){ listOf("500","1000","5000","10000").forEach{ v-> OutlinedButton(onClick={amount=v}, shape=RoundedCornerShape(20.dp), colors=ButtonDefaults.outlinedButtonColors(containerColor=if(amount==v) Green else Color.White, contentColor=if(amount==v) Color.White else Green)){ Text("+$v", fontSize=12.sp) } } }
-                       Spacer(Modifier.height(10.dp))
-                       Button(onClick={ val amt=amount.toDoubleOrNull()?:0.0; if(amt>0){ box+=amt } }, modifier=Modifier.fillMaxWidth(), colors=ButtonDefaults.buttonColors(containerColor=Green), shape=RoundedCornerShape(12.dp)){ Text("✨ Save Now - $curDate", fontWeight=FontWeight.Bold) }
-                       Spacer(Modifier.height(6.dp))
-                       Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween){ Button(onClick={ curDate=nextDate; nextDate=addDays(curDate,7); weekNum++ }){ Text("CLOSE -> $nextDate", fontSize=12.sp) }; OutlinedButton(onClick={ isLocked=true }){ Text("🔒 Lock App") } }
-                     }
+             Scaffold{ pad->
+               Column(Modifier.padding(pad).background(Color(0xFFF5F5F5)).fillMaxSize()){
+                 Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(bottomStart=20.dp, bottomEnd=20.dp), colors=CardDefaults.cardColors(containerColor=Green)){
+                   Row(Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically){
+                     Column{ Text("Zeu Savings", color=Color.White, fontWeight=FontWeight.Bold, fontSize=18.sp); Text("Week $weekNum: $curDate | Next: $nextDate", color=Color.White, fontSize=11.sp) }
+                     Box(Modifier.size(36.dp).clip(CircleShape).background(Color.White).clickable{ isLocked=true }, contentAlignment=Alignment.Center){ Text("🔒") }
                    }
-                   Spacer(Modifier.height(12.dp))
                  }
-                 item{
-                   Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(16.dp), colors=CardDefaults.cardColors(containerColor=Color(0xFFFFEBEE))){ Column(Modifier.padding(12.dp)){ Text("⚠️ Loan Deadline: Oct 28, 2025 • 3 days remaining", fontSize=12.sp, color=Color.Red); Text("Box: VSH ${box.toInt()} • Next Saving: $nextDate", fontSize=12.sp, fontWeight=FontWeight.Bold, modifier=Modifier.padding(top=4.dp)) } }
-                   Spacer(Modifier.height(12.dp))
-                 }
-                 item{
-                   Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(16.dp), colors=CardDefaults.cardColors(containerColor=Color.White)){
-                     Column(Modifier.padding(16.dp)){
-                       Text("Members (${members.size}) - TAP to see dates", fontWeight=FontWeight.Bold)
-                       members.forEach{ m-> Row(Modifier.fillMaxWidth().padding(vertical=6.dp), verticalAlignment=Alignment.CenterVertically){ Box(Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFFFE082)), contentAlignment=Alignment.Center){ Text(m.initials, fontSize=12.sp, fontWeight=FontWeight.Bold) }; Spacer(Modifier.width(8.dp)); Column(Modifier.weight(1f)){ Text(m.name, fontWeight=FontWeight.Bold, fontSize=13.sp); Text("📅 $curDate • Paid VSH ${m.saved.toInt()}", fontSize=10.sp, color=Color.Gray) }; Text(m.status, color=if(m.status=="Paid") Green else Color.Red, fontSize=11.sp) } }
-                     }
-                   }
-                   Spacer(Modifier.height(12.dp))
-                 }
-                 item{
-                   Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(16.dp), colors=CardDefaults.cardColors(containerColor=Color(0xFFFFF8E1))){ Column(Modifier.padding(16.dp), horizontalAlignment=Alignment.CenterHorizontally){ Text("Group Fund Total"); Text("VSH ${box.toInt()}", fontWeight=FontWeight.Bold, fontSize=22.sp); Text("Week $weekNum: $curDate → Next: $nextDate", fontSize=11.sp, color=Green) } }
-                 }
-               }
-              }
-             }
-           }
-          }
-          EOF
-          cat > app/src/main/AndroidManifest.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-           <application android:label="Zeu Savings V13 Lock" android:theme="@android:style/Theme.Material.Light">
-            <activity android:name=".MainActivity" android:exported="true">
-             <intent-filter>
-              <action android:name="android.intent.action.MAIN"/>
-              <category android:name="android.intent.category.LAUNCHER"/>
-             </intent-filter>
-            </activity>
-           </application>
-          </manifest>
-          EOF
-      - name: Setup Gradle
-        uses: gradle/gradle-build-action@v3
-        with:
-          gradle-version: 8.5
-      - name: Build APK
-        run: |
-          echo "android.useAndroidX=true" > gradle.properties
-          echo "android.useAndroidX=true" > app/gradle.properties
-          mkdir -p ~/.gradle
-          echo "android.useAndroidX=true" > ~/.gradle/gradle.properties
-          gradle :app:assembleDebug
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Zeu-V13-Lock-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+                 LazyColumn(Modifier.padding(12.dp)){
+                   item{
+                     Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(16.dp)){
+                       Column(Modifier.padding(16.dp)){
+                         Text("Flexible Savings Input", fontWeight=FontWeight.Bold, fontSize=18.sp)
+                         Text("This Week: $curDate • Next: $nextDate (+7 days)", fontSize=11.sp, color=Color.Gray)
+                         Spacer(Modifier.height(8.dp))
+                         OutlinedTextField(value=amount, onValueChange={amount=it}, label={Text("Amount VSH")}, modifier=Modifier.fillMaxWidth())
+                         Row(Modifier.fillMaxWidth().padding(top=8.dp), horizontalArrangement=Arrangement.SpaceBetween){
+                           listOf("500","1000","5000","10000").forEach{ v-> OutlinedButton(onClick={amount=v}, shape=RoundedCornerShape(20.dp)){ Text("+$v", fontSize=11.sp) } }
+                         }
+                         Spacer(Modifier.height(8.dp))
+                         Button(onClick={ val a=amount.toDoubleOrNull()?:0.0; if(a>0){ box+=a } }, modifier=Modifier.fillMaxWidth(), colors=ButtonDefaults.buttonColors(containerColor=Green)){ Text("Save Now - $curDate") }
+                         Spacer(Modifier.height(8.dp))
+                         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                           Button(onClick={ curDate=nextDate; nextDate=addDays(curDate,7); weekNum++ }, colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF1565C0))){ Text("CLOSE -> $nextDate", fontSize=11.sp) }
+                           OutlinedButton(onClick={ isLocked=true }){ Text("Lock App")

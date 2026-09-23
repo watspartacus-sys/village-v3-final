@@ -141,3 +141,123 @@ jobs:
                    Spacer(Modifier.height(10.dp))
                  }
                  item{
+                   Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(16.dp)){
+                     Column(Modifier.padding(16.dp)){
+                       Text("💰 Add Saving for ${m.name}", fontWeight=FontWeight.Bold)
+                       Text("Date: $curDate • Next: $nextDate", fontSize=11.sp, color=Color.Gray)
+                       OutlinedTextField(value=amount, onValueChange={amount=it}, label={Text("VSH Amount")}, modifier=Modifier.fillMaxWidth().padding(top=8.dp))
+                       Row(Modifier.padding(top=8.dp), horizontalArrangement=Arrangement.spacedBy(6.dp)){ listOf("500","1000","5000","10000").forEach{ v-> OutlinedButton(onClick={amount=v}){ Text("+$v", fontSize=11.sp) } } }
+                       Button(onClick={ val a=amount.toDoubleOrNull()?:0.0; if(a>0){ records=records+Record(curDate, weekNum, m.id, a); members=members.map{ if(it.id==m.id) it.copy(saved=it.saved+a, status="Paid") else it }; box+=a; val updated=members.find{it.id==m.id}; if(updated!=null) selectedMember=updated } }, modifier=Modifier.fillMaxWidth().padding(top=8.dp), colors=ButtonDefaults.buttonColors(containerColor=Green)){ Text("Save $amount for ${m.name} - $curDate") }
+                     }
+                   }
+                   Spacer(Modifier.height(10.dp))
+                 }
+                 item{
+                   Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(16.dp)){
+                     Column(Modifier.padding(16.dp)){
+                       Text("📅 Personal History - All Dates", fontWeight=FontWeight.Bold, fontSize=15.sp)
+                       Text("${m.name} • From $curDate to $nextDate • ${personal.size} records", fontSize=11.sp, color=Color.Gray)
+                       Spacer(Modifier.height(8.dp))
+                       if(personal.isEmpty()){
+                         Card(colors=CardDefaults.cardColors(containerColor=Color(0xFFFFEBEE)), shape=RoundedCornerShape(8.dp)){ Column(Modifier.padding(10.dp).fillMaxWidth()){ Text("No savings yet - Status ${m.status}", color=Color.Red, fontSize=12.sp); Text("📅 Expected: $curDate - 0 VSH", fontSize=11.sp) } }
+                       } else {
+                         personal.reversed().forEach{ r->
+                           Card(Modifier.fillMaxWidth().padding(vertical=3.dp), colors=CardDefaults.cardColors(containerColor=Color(0xFFE8F5E9))){
+                             Row(Modifier.padding(10.dp).fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween){
+                               Column{ Text("📅 ${r.date}", fontWeight=FontWeight.Bold, fontSize=12.sp); Text("Week ${r.week} • ${r.date} → ${addDays(r.date,7)}", fontSize=10.sp, color=Color.Gray) }
+                               Text("+${r.amount.toInt()} VSH", fontWeight=FontWeight.Bold, color=Green, fontSize=12.sp)
+                             }
+                           }
+                         }
+                       }
+                       Spacer(Modifier.height(8.dp))
+                       Card(colors=CardDefaults.cardColors(containerColor=Color(0xFFFFF8E1))){ Column(Modifier.padding(10.dp)){ Text("Summary", fontWeight=FontWeight.Bold, fontSize=12.sp); Text("First: $curDate • Next: $nextDate • Box: VSH ${box.toInt()}", fontSize=11.sp) } }
+                     }
+                   }
+                 }
+               }
+             }
+           } else {
+             if(showAdd){
+               AlertDialog(onDismissRequest={showAdd=false}, title={Text("Add Member")}, text={ Column{ Text("Week $weekNum: $curDate", fontSize=11.sp); OutlinedTextField(value=newName, onValueChange={newName=it}, label={Text("Name e.g Sarah N.")}, modifier=Modifier.fillMaxWidth().padding(top=8.dp)); if(newName.isNotEmpty()) Text("Initials ${getInitials(newName)} • Starts $curDate", color=Green, fontSize=11.sp, modifier=Modifier.padding(top=4.dp)) } }, confirmButton={ Button(onClick={ if(newName.trim().length>=2){ members=members+Member(members.size+1, newName.trim(), getInitials(newName), 0.0, "Due"); newName=""; showAdd=false } }, colors=ButtonDefaults.buttonColors(containerColor=Green)){ Text("Add") } }, dismissButton={ TextButton(onClick={showAdd=false}){ Text("Cancel") } })
+             }
+             Column(Modifier.fillMaxSize().background(Color(0xFFF5F5F5))){
+               Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(bottomStart=20.dp, bottomEnd=20.dp), colors=CardDefaults.cardColors(containerColor=Green)){
+                 Row(Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically){
+                   Column{ Text("Zeu Savings", color=Color.White, fontWeight=FontWeight.Bold, fontSize=18.sp); Text("Week $weekNum: $curDate → $nextDate | ${members.size} members", color=Color.White, fontSize=11.sp) }
+                   Box(Modifier.size(36.dp).clip(CircleShape).background(Color.White).clickable{ isLocked=true }, contentAlignment=Alignment.Center){ Text("🔒") }
+                 }
+               }
+               LazyColumn(Modifier.padding(12.dp)){
+                 item{
+                   Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(16.dp)){
+                     Column(Modifier.padding(16.dp)){
+                       Text("Flexible Input", fontWeight=FontWeight.Bold)
+                       Text("Week $weekNum: $curDate • Next $nextDate (+7d)", fontSize=11.sp, color=Color.Gray)
+                       OutlinedTextField(value=amount, onValueChange={amount=it}, label={Text("Amount VSH")}, modifier=Modifier.fillMaxWidth().padding(top=8.dp))
+                       Row(Modifier.padding(top=8.dp), horizontalArrangement=Arrangement.spacedBy(6.dp)){ listOf("500","1000","5000","10000").forEach{ v-> OutlinedButton(onClick={amount=v}){ Text("+$v", fontSize=11.sp) } } }
+                       Row(Modifier.padding(top=8.dp), horizontalArrangement=Arrangement.spacedBy(8.dp)){ Button(onClick={ curDate=nextDate; nextDate=addDays(curDate,7); weekNum++ }, colors=ButtonDefaults.buttonColors(containerColor=Color(0xFF1565C0))){ Text("CLOSE → $nextDate", fontSize=11.sp) }; OutlinedButton(onClick={ isLocked=true }){ Text("Lock") } }
+                     }
+                   }
+                   Spacer(Modifier.height(10.dp))
+                 }
+                 item{
+                   Card(Modifier.fillMaxWidth(), shape=RoundedCornerShape(16.dp)){
+                     Column(Modifier.padding(12.dp)){
+                       Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically){
+                         Text("Members (${members.size}) TAP 👆", fontWeight=FontWeight.Bold, color=Green)
+                         Button(onClick={ showAdd=true }, colors=ButtonDefaults.buttonColors(containerColor=Green), contentPadding=PaddingValues(horizontal=10.dp, vertical=4.dp)){ Text("+ Add Member", fontSize=11.sp) }
+                       }
+                       Spacer(Modifier.height(6.dp))
+                       members.forEach{ m->
+                         Card(Modifier.fillMaxWidth().padding(vertical=4.dp).clickable{ selectedMember=m }, elevation=CardDefaults.cardElevation(2.dp)){
+                           Row(Modifier.padding(12.dp).fillMaxWidth(), verticalAlignment=Alignment.CenterVertically){
+                             Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0xFFFFE082)), contentAlignment=Alignment.Center){ Text(m.initials, fontWeight=FontWeight.Bold) }
+                             Spacer(Modifier.width(10.dp))
+                             Column(Modifier.weight(1f)){ Text("#${m.id} ${m.name}", fontWeight=FontWeight.Bold, fontSize=13.sp); Text("VSH ${m.saved.toInt()} • 📅 $curDate", fontSize=11.sp, color=Color.Gray) }
+                             Text("View >", color=Green, fontWeight=FontWeight.Bold, fontSize=11.sp)
+                           }
+                         }
+                       }
+                     }
+                   }
+                   Spacer(Modifier.height(10.dp))
+                 }
+                 item{
+                   Card(Modifier.fillMaxWidth(), colors=CardDefaults.cardColors(containerColor=Color(0xFFFFF8E1)), shape=RoundedCornerShape(16.dp)){
+                     Column(Modifier.padding(14.dp), horizontalAlignment=Alignment.CenterHorizontally){
+                       Text("Group Total"); Text("VSH ${box.toInt()}", fontWeight=FontWeight.Bold, fontSize=20.sp); Text("Week $weekNum: $curDate → $nextDate • ${records.size} records", fontSize=11.sp, color=Green)
+                     }
+                   }
+                 }
+               }
+             }
+           }
+          }
+          EOF
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+           <application android:label="Zeu V13.5 Personal" android:theme="@android:style/Theme.Material.Light">
+            <activity android:name=".MainActivity" android:exported="true">
+             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+            </activity>
+           </application>
+          </manifest>
+          EOF
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: 8.5
+      - name: Build APK
+        run: |
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "android.useAndroidX=true" > app/gradle.properties
+          mkdir -p ~/.gradle
+          echo "android.useAndroidX=true" > ~/.gradle/gradle.properties
+          gradle :app:assembleDebug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Zeu-V13.5-Fixed-Personal-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
